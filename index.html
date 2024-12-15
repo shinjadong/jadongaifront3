@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 쇼핑 분석기 통합</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif;
+            background: #f2f2f2; color: #333;
+        }
+        /* 로그인/회원가입 페이지 스타일 */
+        .login-container {
+            width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: #f2f2f2;
+        }
+        .login-box, .signup-box {
+            background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 300px; text-align: center;
+        }
+        .login-box h2, .signup-box h2 {
+            margin-bottom: 20px; font-weight: 700;
+        }
+        .input-group { margin-bottom: 20px; }
+        .input-group input {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px;
+        }
+        .login-button, .signup-button {
+            width: 100%; padding: 10px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 700;
+        }
+        .signup-link, .login-link {
+            margin-top: 10px; font-size: 14px;
+        }
+        .signup-link a, .login-link a {
+            color: #333; text-decoration: underline; cursor: pointer;
+        }
+        .loading-indicator {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5);
+            display:flex; justify-content:center; align-items:center; flex-direction:column;
+            color:#fff; font-size:18px; z-index:9999;
+        }
+        .spinner {
+            width: 50px; height:50px; border:8px solid #fff; border-top:8px solid #333; border-radius:50%; animation: spin 1s linear infinite; margin-bottom:10px;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        .modal {
+            position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5);
+            display:flex; justify-content:center; align-items:center; z-index:9999;
+        }
+        .modal-content {
+            background:#fff; padding:20px; border-radius:8px; position:relative; max-width:400px; width:90%;
+        }
+        .close-button {
+            position:absolute; top:10px; right:10px; cursor:pointer; font-size:20px;
+        }
+
+        /* 메인 페이지 스타일 */
+        .top-bar {
+            background:#fff; border-bottom:1px solid #ccc; display:flex; justify-content:space-between; align-items:center; padding:0 20px; height:60px;
+        }
+        .main-menu ul {
+            list-style:none; margin:0; padding:0; display:flex; align-items:center; height:60px;
+        }
+        .main-menu ul li {
+            position:relative; margin:0 10px; cursor:pointer;
+        }
+        .main-menu ul li a {
+            text-decoration:none; color:#333; padding:10px; display:block; font-weight:500;
+        }
+        .main-menu ul li a.active {
+            font-weight:700; border-bottom:2px solid #333;
+        }
+        .dropdown-content {
+            display:none; position:absolute; top:100%; left:0; background:#fff; box-shadow:0 0 10px rgba(0,0,0,0.1);
+            min-width:120px; z-index:100;
+        }
+        .dropdown-content li {
+            margin:0; padding:0;
+        }
+        .dropdown-content li a {
+            padding:10px; display:block; color:#333; text-decoration:none;
+        }
+        .dropdown:hover .dropdown-content {
+            display:block;
+        }
+        .disabled a.not-available {
+            color:#aaa; cursor:not-allowed;
+        }
+        .disabled .tooltip {
+            display:none; position:absolute; top:60px; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:5px; font-size:12px; border-radius:4px;
+        }
+        .disabled:hover .tooltip {
+            display:block;
+        }
+        .user-actions {
+            display:flex; align-items:center; gap:10px;
+        }
+        .user-actions .guide { text-decoration:none; color:#333; }
+        .logout-button {
+            padding:5px 10px; border:none; background:#333; color:#fff; border-radius:4px; cursor:pointer;
+        }
+        .sidebar {
+            position:fixed; top:60px; left:0; width:60px; height:calc(100vh - 60px); background:#fff; border-right:1px solid #ccc; display:flex; flex-direction:column; align-items:center;
+        }
+        .sidebar ul {
+            list-style:none; margin:0; padding:0; width:100%;
+        }
+        .sidebar ul li {
+            width:100%; text-align:center; padding:20px 0; cursor:pointer; border-bottom:1px solid #eee; position:relative;
+        }
+        .sidebar ul li i {
+            font-size:20px; color:#333;
+        }
+        .sidebar ul li.active, .sidebar ul li:hover {
+            background:#f2f2f2;
+        }
+        .sidebar-text {
+            display:none; font-size:12px; margin-top:5px;
+        }
+        .sidebar ul li:hover .sidebar-text {
+            display:block;
+        }
+        .container {
+            margin-left:60px; padding:20px; margin-top:60px;
+        }
+        .tab-menu {
+            margin-bottom:20px;
+        }
+        .tab-button {
+            background:#fff; border:1px solid #ccc; padding:10px; cursor:pointer; margin-right:5px; font-weight:500;
+        }
+        .tab-button.active {
+            background:#333; color:#fff;
+        }
+        .tab-content {
+            display:none;
+        }
+        .tab-content.active {
+            display:block;
+        }
+        .search-section, .table-section {
+            background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 5px rgba(0,0,0,0.1); margin-bottom:20px;
+        }
+        .search-container {
+            display:flex; gap:10px; align-items:center;
+        }
+        .search-type select {
+            padding:5px; border:1px solid #ccc; border-radius:4px;
+        }
+        .search-bar {
+            display:flex; flex:1; gap:10px;
+        }
+        .search-bar input {
+            flex:1; padding:10px; border:1px solid #ccc; border-radius:4px;
+        }
+        .search-button, .collect-button, .bulk-action-btn {
+            padding:10px; border:none; background:#333; color:#fff; border-radius:4px; cursor:pointer;
+        }
+        .table-container {
+            overflow-x:auto; margin-top:10px;
+        }
+        table {
+            width:100%; border-collapse:collapse;
+        }
+        table th, table td {
+            border-bottom:1px solid #eee; padding:10px; text-align:left; font-size:14px;
+        }
+        table th {
+            background:#f9f9f9;
+        }
+        .collect-button[disabled], .bulk-action-btn[disabled] {
+            background:#aaa; cursor:not-allowed;
+        }
+        .empty-message {
+            text-align:center; color:#999; font-size:14px; padding:20px 0;
+        }
+        .bulk-actions {
+            display:flex; gap:10px; margin-bottom:10px;
+        }
+        .action-buttons .action-btn {
+            margin-right:5px; padding:5px 10px; background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:12px;
+        }
+        .collected-header {
+            display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;
+        }
+        .progress-status {
+            font-size:14px; color:#333;
+        }
+        .progress-status span {
+            font-weight:700;
+        }
+        .taobao-matched {
+            display:flex; flex-direction:column; align-items:flex-start;
+        }
+        .match-status {
+            display:inline-block; padding:2px 5px; border-radius:4px; font-size:12px; margin-bottom:5px;
+        }
+        .match-status.matched {
+            background:#4caf50; color:#fff;
+        }
+        .match-status.unmatched {
+            background:#f44336; color:#fff;
+        }
+        .taobao-price {
+            font-size:12px; color:#333;
+        }
+        .taobao-price .krw-price {
+            color:#999;
+        }
+        .product-title {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .collected-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        
+        .processing {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .action-btn[disabled] {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            color: #f44336;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        .input-error {
+            border-color: #f44336 !important;
+        }
+        
+        .error-message {
+            color: #f44336;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .input-group .error-message {
+            position: absolute;
+            bottom: -18px;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 로그인/회원가입 영역 -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box" id="loginBox">
+            <h2>로그인</h2>
+            <div class="input-group">
+                <input type="email" id="loginEmail" placeholder="이메일" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="loginPassword" placeholder="비밀번호" required>
+            </div>
+            <button onclick="handleLogin()" class="login-button">로그인</button>
+            <div class="signup-link">
+                <p>계정이 없으신가요? <a onclick="showSignupForm()">회원가입</a></p>
+            </div>
+        </div>
+
+        <div class="signup-box" id="signupBox" style="display: none;">
+            <h2>회원가입</h2>
+            <div class="input-group">
+                <input type="text" id="signupName" placeholder="이름" required>
+            </div>
+            <div class="input-group">
+                <input type="email" id="signupEmail" placeholder="이메일" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="signupPassword" placeholder="비밀번호" required>
+            </div>
+            <button onclick="handleSignup()" class="signup-button">회원가입</button>
+            <div class="login-link">
+                <p>이미 계정이 있으신가요? <a onclick="showLoginForm()">로그인</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 영역 -->
+    <div class="top-bar" id="mainTopBar" style="display:none;">
+        <nav class="main-menu">
+            <ul>
+                <li class="dropdown">
+                    <a class="active">소싱 <i class="fas fa-chevron-down"></i></a>
+                    <ul class="dropdown-content">
+                        <li><a onclick="switchTab('search')">AI 소싱</a></li>
+                        <li><a onclick="switchTab('reverse')">REVERSE</a></li>
+                        <li><a onclick="switchTab('shipping')">배송대행지</a></li>
+                        <li><a onclick="switchTab('customs')">통관번호</a></li>
+                        <li><a onclick="switchTab('exclude')">제외 LIST</a></li>
+                    </ul>
+                </li>
+                <li class="disabled">
+                    <a class="not-available">AI</a>
+                    <span class="tooltip">준비중입니다.</span>
+                </li>
+                <li class="disabled">
+                    <a class="not-available">마케팅</a>
+                    <span class="tooltip">준비중입니다.</span>
+                </li>
+                <li class="disabled">
+                    <a class="not-available">유튜브</a>
+                    <span class="tooltip">준비중입니다.</span>
+                </li>
+                <li class="disabled">
+                    <a class="not-available">멤버십</a>
+                    <span class="tooltip">준비중입니다.</span>
+                </li>
+            </ul>
+        </nav>
+        <div class="user-actions">
+            <span id="remainingCredits"></span>
+            <a class="guide">가이드</a>
+            <button onclick="handleLogout()" class="logout-button">로그아웃</button>
+        </div>
+    </div>
+
+    <div class="sidebar" id="mainSidebar" style="display:none;">
+        <ul>
+            <li onclick="switchTab('search')" data-tooltip="AI 소싱" class="active">
+                <i class="fas fa-robot"></i>
+                <span class="sidebar-text">AI 소싱</span>
+            </li>
+            <li onclick="switchTab('reverse')" data-tooltip="REVERSE">
+                <i class="fas fa-undo"></i>
+                <span class="sidebar-text">REVERSE</span>
+            </li>
+            <li onclick="switchTab('shipping')" data-tooltip="배송대행지">
+                <i class="fas fa-shipping-fast"></i>
+                <span class="sidebar-text">배송대행지</span>
+            </li>
+            <li onclick="switchTab('customs')" data-tooltip="통관번호">
+                <i class="fas fa-clipboard-check"></i>
+                <span class="sidebar-text">통관번호</span>
+            </li>
+            <li onclick="switchTab('exclude')" data-tooltip="제외 LIST">
+                <i class="fas fa-ban"></i>
+                <span class="sidebar-text">제외 LIST</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="container" id="mainContainer" style="display:none;">
+        <div class="tab-menu">
+            <button class="tab-button active" onclick="switchTab('search')">
+                <i class="fas fa-search"></i> AI 소싱
+            </button>
+            <button class="tab-button" onclick="switchTab('collected')">
+                <i class="fas fa-box"></i> 수집한 상품
+            </button>
+            <button class="tab-button" onclick="switchTab('reverse')">
+                <i class="fas fa-sync"></i> 마켓 리버싱
+            </button>
+        </div>
+
+        <!-- AI 소싱 탭 -->
+        <div id="searchTab" class="tab-content active">
+            <div class="search-section">
+                <div class="search-container">
+                    <div class="search-type">
+                        <select id="searchType">
+                            <option value="review">리뷰많은순</option>
+                            <option value="rel">네이버 순</option>
+                        </select>
+                    </div>
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" placeholder="검색어를 입력하세요">
+                        <button onclick="handleSearch()" class="search-button">
+                            <i class="fas fa-search"></i> 검색
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="table-actions">
+                    <button onclick="handleCollectProducts()" class="collect-button" disabled>
+                        <i class="fas fa-download"></i> 선택된 상품 수집
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="40"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                                <th width="60">이미지</th>
+                                <th>상품명</th>
+                                <th width="100">가격</th>
+                                <th width="80">리뷰수</th>
+                                <th width="100">최근판매량</th>
+                                <th width="100">마켓명</th>
+                            </tr>
+                        </thead>
+                        <tbody id="searchResults"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 수집한 상품 탭 -->
+        <div id="collectedTab" class="tab-content">
+            <div class="collected-header">
+                <h2>수집된 상품 목록</h2>
+                <div class="progress-status">
+                    SEO 생성: <span id="seoProgress">0/0</span> | 타오바오 매칭: <span id="matchProgress">0/0</span>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="bulk-actions">
+                    <button onclick="handleBulkTaobaoMatch()" class="bulk-action-btn taobao-btn" disabled>
+                        <i class="fas fa-link"></i> 타오바오 매칭
+                    </button>
+                    <!-- 삭제, bulk SEO 등 불필요 기능 삭제 -->
+                    <button onclick="handleDownloadHeySeller()" class="bulk-action-btn heyseller-btn" disabled>
+                        <i class="fas fa-file-download"></i> 헤이셀러 다운로드
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="40"><input type="checkbox" id="selectAllCollected" onclick="toggleSelectAllCollected()"></th>
+                                <th width="60">이미지</th>
+                                <th>상품명</th>
+                                <th width="200">SEO 타이틀</th>
+                                <th width="100">가격</th>
+                                <th width="80">리뷰수</th>
+                                <th width="100">최근판매량</th>
+                                <th width="100">마켓명</th>
+                                <th width="120">타오바오</th>
+                                <th width="120">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="collectedProducts"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 마켓 리버싱 탭 -->
+        <div id="reverseTab" class="tab-content">
+            <!-- 필요시 구현 -->
+            <p>마켓 리버싱 기능 구현 예정</p>
+        </div>
+    </div>
+
+    <!-- 로딩 인디케이터 -->
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>처리중입니다...</p>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div id="messageModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+
+    <script>
+        // API 설정
+        const API_BASE_URL = 'https://nice-quiet-feline.ngrok-free.app';
+
+        // 공통 함수
+        async function makeRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...options.headers
+                    },
+                    credentials: 'include',
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '요청 처리 중 오류가 발생했습니다.');
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API 요청 실패:', error);
+                throw error;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingIndicator').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        }
+
+        function showModal(message) {
+            const modalMessage = document.getElementById('modalMessage');
+            const modal = document.getElementById('messageModal');
+            modalMessage.textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('messageModal').style.display = 'none';
+        }
+
+        let currentUser = null;
+        let selectedProducts = new Set();
+        let selectedCollectedProducts = new Set();
+
+        function showSignupForm() {
+            document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('signupBox').style.display = 'block';
+        }
+
+        function showLoginForm() {
+            document.getElementById('loginBox').style.display = 'block';
+            document.getElementById('signupBox').style.display = 'none';
+        }
+
+        async function handleSignup() {
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value.trim();
+
+            if (!name || !email || !password) {
+                showModal('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            // 이메일 형식 검증
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showModal('올바른 이메일 형식을 입력해주세요.');
+                return;
+            }
+
+            // 비밀번호 유효성 검사 (최소 6자 이상)
+            if (password.length < 6) {
+                showModal('비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || '회원가입에 실패했습니다.');
+                }
+
+                showModal('회원가입이 완료되었습니다. 로그인해주세요.');
+                showLoginForm();
+                
+            } catch (error) {
+                console.error('회원가입 오류:', error);
+                showModal(error.message || '회원가입 중 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            if (!email || !password) {
+                showModal('이메일과 비밀번호를 모두 입력해주세요.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const data = await makeRequest('/login', {
+                    method: 'POST',
+                    body: JSON.stringify({email, password})
+                });
+
+                currentUser = {
+                    uid: data.user.uid,
+                    email: data.user.email,
+                    name: data.user.name,
+                    remainingCredits: data.user.remainingCredits || 5
+                };
+                
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                showMainPage();
+                
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                showModal(error.message || '로그인 중 오류가 발생했습니다.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showMainPage() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('mainTopBar').style.display = 'flex';
+            document.getElementById('mainSidebar').style.display = 'block';
+            document.getElementById('mainContainer').style.display = 'block';
+            updateUserInfo();
+        }
+
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('remainingCredits').textContent = `남은 컨설팅 횟수: ${currentUser.remainingCredits}`;
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            location.reload();
+        }
+
+        async function handleSearch() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const searchType = document.getElementById('searchType').value;
+
+            if (!keyword) {
+                showModal('검색어를 입력해주세요.');
+                return;
+            }
+
+            if (!currentUser || !currentUser.uid) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/search`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({keyword, uid: currentUser.uid, sort_type: searchType})
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || '검색 중 오류');
+                }
+                displaySearchResults(data.products);
+            } catch (error) {
+                console.error('검색 실패:', error);
+                showModal(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displaySearchResults(products) {
+            const tbody = document.getElementById('searchResults');
+            tbody.innerHTML = '';
+            selectedProducts.clear();
+            updateCollectButton();
+
+            if (!Array.isArray(products) || products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-message">검색 결과가 없습니다.</td></tr>`;
+                return;
+            }
+
+            products.forEach((product, index) => {
+                const row = document.createElement('tr');
+                const priceFormatted = new Intl.NumberFormat('ko-KR').format(product.price);
+                const reviewFormatted = new Intl.NumberFormat('ko-KR').format(product.review_count);
+                const recentPurchasesFormatted = new Intl.NumberFormat('ko-KR').format(product.recent_purchases || 0);
+
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" value="${product.id}" 
+                               onchange="handleProductSelect(this)" 
+                               ${product.isCollected ? 'disabled checked' : ''}>
+                    </td>
+                    <td>
+                        <img src="${product.image_url}" alt="${product.product_title}" 
+                             style="width:50px; height:50px; object-fit:contain;"
+                             onerror="this.src='placeholder.jpg'">
+                    </td>
+                    <td>
+                        <div class="product-title" title="${product.product_title}">
+                            ${product.product_title}
+                        </div>
+                        ${product.isCollected ? '<span class="collected-badge">수집됨</span>' : ''}
+                    </td>
+                    <td>${priceFormatted}원</td>
+                    <td>${reviewFormatted}</td>
+                    <td>${recentPurchasesFormatted}</td>
+                    <td>${product.market_name || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function handleProductSelect(checkbox) {
+            if (checkbox.checked) {
+                selectedProducts.add(checkbox.value);
+            } else {
+                selectedProducts.delete(checkbox.value);
+            }
+            updateCollectButton();
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('#searchResults input[type="checkbox"]');
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(cb => {cb.checked=true; selectedProducts.add(cb.value);});
+            } else {
+                checkboxes.forEach(cb => {cb.checked=false; selectedProducts.delete(cb.value);});
+            }
+            updateCollectButton();
+        }
+
+        function updateCollectButton() {
+            const collectButton = document.querySelector('.collect-button');
+            collectButton.disabled = selectedProducts.size === 0;
+        }
+
+        async function handleCollectProducts() {
+            if (selectedProducts.size === 0) {
+                showModal('선택된 상품이 없습니다.');
+                return;
+            }
+
+            if (!currentUser || !currentUser.uid) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+
+            showLoading();
+            try {
+                const data = await makeRequest('/collect', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        uid: currentUser.uid,
+                        selected_product_ids: Array.from(selectedProducts)
+                    })
+                });
+                showModal('상품이 성공적으로 수집되었습니다.');
+                selectedProducts.clear();
+                updateCollectButton();
+                switchTab('collected');
+            } catch (error) {
+                console.error('수집 실패:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+
+            const selectedTab = document.getElementById(`${tabName}Tab`);
+            const selectedButton = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+
+            if (selectedTab) selectedTab.classList.add('active');
+            if (selectedButton) selectedButton.classList.add('active');
+
+            if (tabName === 'collected') {
+                loadCollectedProducts();
+            }
+        }
+
+        async function loadCollectedProducts() {
+            if (!currentUser) return;
+            showLoading();
+            try {
+                const data = await makeRequest(`/get_collected_products?uid=${currentUser.uid}`, {
+                    method: 'GET'
+                });
+                if (data && data.products) {
+                    displayCollectedProducts(data.products);
+                    updateProgress(data.products);
+                }
+            } catch (error) {
+                console.error('수집된 상품 로드 실패:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayCollectedProducts(products) {
+            const tbody = document.getElementById('collectedProducts');
+            tbody.innerHTML = '';
+            selectedCollectedProducts.clear();
+
+            if (!Array.isArray(products) || products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="empty-message">수집된 상품이 없습니다.</td></tr>`;
+                return;
+            }
+
+            products.forEach(product => {
+                const row = document.createElement('tr');
+                const priceFormatted = new Intl.NumberFormat('ko-KR').format(product.price);
+                const reviewFormatted = new Intl.NumberFormat('ko-KR').format(product.review_count);
+                const recentPurchasesFormatted = new Intl.NumberFormat('ko-KR').format(product.recent_purchases || 0);
+
+                const taobaoMatchHtml = product.taobaoMatch ? `
+                    <div class="taobao-matched">
+                        <span class="match-status matched">매칭완료</span>
+                        <span class="taobao-price">
+                            ¥${new Intl.NumberFormat('ko-KR').format(product.taobaoMatch.price)}<br>
+                            <small class="krw-price">약 ${new Intl.NumberFormat('ko-KR').format(product.taobaoMatch.price * 200)}원</small>
+                        </span>
+                    </div>
+                ` : '<span class="match-status unmatched">미매칭</span>';
+
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" value="${product.id}" 
+                               onchange="handleCollectedProductSelect(this)"
+                               ${product.processing ? 'disabled' : ''}>
+                    </td>
+                    <td>
+                        <img src="${product.image_url}" alt="${product.product_title}"
+                             style="width:50px; height:50px; object-fit:contain;"
+                             onerror="this.src='placeholder.jpg'">
+                    </td>
+                    <td>
+                        <div class="product-title" title="${product.product_title}">
+                            ${product.product_title}
+                        </div>
+                    </td>
+                    <td>${product.seo_title || '미생성'}</td>
+                    <td>${priceFormatted}원</td>
+                    <td>${reviewFormatted}</td>
+                    <td>${recentPurchasesFormatted}</td>
+                    <td>${product.market_name}</td>
+                    <td>${taobaoMatchHtml}</td>
+                    <td class="action-buttons">
+                        ${!product.seo_title ? `
+                            <button onclick="handleSingleSEO('${product.id}')" 
+                                    class="action-btn seo-btn"
+                                    ${product.processing ? 'disabled' : ''}>
+                                SEO 생성
+                            </button>
+                        ` : ''}
+                        ${!product.taobaoMatch ? `
+                            <button onclick="handleSingleTaobaoMatch('${product.id}')" 
+                                    class="action-btn taobao-btn"
+                                    ${product.processing ? 'disabled' : ''}>
+                                타오바오 매칭
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            updateCollectButtonStates();
+        }
+
+        function handleCollectedProductSelect(checkbox) {
+            if (checkbox.checked) {
+                selectedCollectedProducts.add(checkbox.value);
+            } else {
+                selectedCollectedProducts.delete(checkbox.value);
+            }
+            updateCollectButtonStates();
+        }
+
+        function toggleSelectAllCollected() {
+            const allCheckbox = document.getElementById('selectAllCollected');
+            const checkboxes = document.querySelectorAll('#collectedProducts input[type="checkbox"]');
+            if (allCheckbox.checked) {
+                checkboxes.forEach(cb => {cb.checked=true; selectedCollectedProducts.add(cb.value);});
+            } else {
+                checkboxes.forEach(cb => {cb.checked=false; selectedCollectedProducts.delete(cb.value);});
+            }
+            updateCollectButtonStates();
+        }
+
+        function updateCollectButtonStates() {
+            const taobaoBtn = document.querySelector('.bulk-action-btn.taobao-btn');
+            const heysellerBtn = document.querySelector('.heyseller-btn');
+            
+            const hasSelection = selectedCollectedProducts.size > 0;
+            
+            if (taobaoBtn) taobaoBtn.disabled = !hasSelection;
+            if (heysellerBtn) heysellerBtn.disabled = !hasSelection;
+        }
+
+        function updateProgress(products) {
+            const totalCount = products.length;
+            const seoCount = products.filter(p => p.seo_title).length;
+            const taobaoCount = products.filter(p => p.taobaoMatch).length;
+            
+            document.getElementById('seoProgress').textContent = `${seoCount}/${totalCount}`;
+            document.getElementById('matchProgress').textContent = `${taobaoCount}/${totalCount}`;
+        }
+
+        async function handleSingleSEO(productId) {
+            if (!currentUser) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+            showLoading();
+            try {
+                const response = await makeRequest('/generate_seo', {
+                    method: 'POST',
+                    body: JSON.stringify({uid: currentUser.uid, product_id: productId})
+                });
+                showModal('SEO 타이틀이 생성되었습니다.');
+                await loadCollectedProducts();
+            } catch (error) {
+                console.error('SEO 생성 실패:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleSingleTaobaoMatch(productId) {
+            if (!currentUser) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+            showLoading();
+            try {
+                const response = await makeRequest('/batch_taobao_match', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        uid: currentUser.uid,
+                        productIds: [productId]
+                    })
+                });
+                showModal('타오바오 매칭이 완료되었습니다.');
+                await loadCollectedProducts();
+            } catch (error) {
+                console.error('타오바오 매칭 실패:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleBulkTaobaoMatch() {
+            if (selectedCollectedProducts.size === 0) {
+                showModal('선택된 상품이 없습니다.');
+                return;
+            }
+
+            if (!currentUser) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+            showLoading();
+            try {
+                const response = await makeRequest('/batch_taobao_match', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        uid: currentUser.uid,
+                        productIds: Array.from(selectedCollectedProducts)
+                    })
+                });
+                showModal('타오바오 매칭이 완료되었습니다.');
+                selectedCollectedProducts.clear();
+                await loadCollectedProducts();
+            } catch (error) {
+                console.error('타오바오 매칭 실패:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handleDownloadHeySeller() {
+            if (!currentUser) {
+                showModal('로그인이 필요합니다.');
+                return;
+            }
+            showLoading();
+            try {
+                window.location.href = `${API_BASE_URL}/download_heyseller?uid=${currentUser.uid}`;
+            } catch (error) {
+                console.error('헤이셀러 다운로드 실패:', error);
+                showModal(error.message || '헤이셀러 다운로드 중 오류');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function initializeApp() {
+            try {
+                const savedUser = localStorage.getItem('user');
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                    showMainPage();
+                }
+
+                // 이벤트 리스너 등록
+                const loginPassword = document.getElementById('loginPassword');
+                const signupPassword = document.getElementById('signupPassword');
+                
+                if (loginPassword) {
+                    loginPassword.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') handleLogin();
+                    });
+                }
+                
+                if (signupPassword) {
+                    signupPassword.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') handleSignup();
+                    });
+                }
+            } catch (error) {
+                console.error('초기화 중 오류 발생:', error);
+                localStorage.removeItem('user');
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
